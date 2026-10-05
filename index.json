@@ -2,6 +2,23 @@
   "version": 1,
   "drivers": [
     {
+      "name": "duckdb",
+      "display_name": "DuckDB",
+      "description": "Embedded analytical database with native Arrow ADBC support.",
+      "icon": "database",
+      "icon_url": "https://duckdb.org/images/sharingduckdb.jpg",
+      "license": "MIT",
+      "homepage": "https://duckdb.org/docs/current/clients/adbc.html",
+      "lifecycle": "supported",
+      "adbc_version": "1.5.6",
+      "advisories": [],
+      "version": "1.5.6",
+      "os": "linux",
+      "arch": "amd64",
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/duckdb-v1.5.6/duckdb-1.5.6-linux-amd64.tar.gz",
+      "sha256": "872ea6dd08fc4857b357c94e34d6eb85620311155a86fe9c7f48729121c29d7b"
+    },
+    {
       "name": "sqlite",
       "display_name": "SQLite",
       "description": "Native Apache Arrow ADBC driver for SQLite databases.",
