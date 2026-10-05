@@ -1,0 +1,40 @@
+name: Release DuckDB driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and verify DuckDB release
+        run: |
+          curl --fail --location --output duckdb.zip "https://github.com/duckdb/duckdb/releases/download/v${{ inputs.version }}/libduckdb-linux-amd64.zip"
+          echo "b845005f5132a7d8180057c35e14a7626632258782f871a90861b19c1c03841b  duckdb.zip" | sha256sum --check
+          unzip -q duckdb.zip
+      - name: Package ADBC driver
+        run: |
+          library=$(find . -type f -name libduckdb.so -print -quit)
+          test -n "$library"
+          library_sha=$(sha256sum "$library" | cut -d ' ' -f1)
+          mkdir -p package/lib
+          cp "$library" package/lib/libduckdb.so
+          printf '{"name":"duckdb","version":"%s","os":"linux","arch":"amd64","library":"lib/libduckdb.so","entrypoint":"duckdb_adbc_init","library_sha256":"%s","archive_sha256":"%064d"}\n' "${{ inputs.version }}" "$library_sha" 0 > package/manifest.json
+          tar -C package -czf "duckdb-${{ inputs.version }}-linux-amd64.tar.gz" manifest.json lib
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="duckdb-${{ inputs.version }}-linux-amd64.tar.gz"
+          gh release create "${{ inputs.release_tag }}" --repo "$GITHUB_REPOSITORY" --title "DuckDB driver ${{ inputs.version }}" --notes "Curated DuckDB ADBC release." 2>/dev/null || true
+          gh release upload "${{ inputs.release_tag }}" "$archive" --repo "$GITHUB_REPOSITORY" --clobber
