@@ -1,4 +1,13 @@
 {
   "version": 1,
-  "drivers": []
+  "drivers": [
+    {
+      "name": "flightsql",
+      "version": "1.12.0",
+      "os": "linux",
+      "arch": "amd64",
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/flightsql-v1.12.0/flightsql-1.12.0-linux-amd64.tar.gz",
+      "sha256": "f0ee27d39fb6f9ba60da5d4083baae0adfd97f7b7ef7046895800155be447660"
+    }
+  ]
 }
