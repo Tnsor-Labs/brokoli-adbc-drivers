@@ -1,0 +1,85 @@
+name: Release Foundry MySQL driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_asset_url:
+        description: URL of Foundry MySQL ADBC v0.6.1 Linux amd64 release archive
+        required: true
+        type: string
+      release_tag:
+        description: Immutable GitHub Release tag for the catalog archive
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  VERSION: 0.6.1
+  UPSTREAM_SHA256: 33680569a3d1914373b37bd58950b82e499fad943b8c70fa9c42f184a0ed6d83
+  ARCHIVE: mysql-0.6.1-linux-amd64.tar.gz
+
+jobs:
+  package:
+    name: Package Linux amd64 archive
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download and verify upstream release
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output upstream.tar.gz "${{ inputs.upstream_asset_url }}"
+          echo "$UPSTREAM_SHA256  upstream.tar.gz" | sha256sum --check
+          mkdir upstream
+          tar -xzf upstream.tar.gz -C upstream
+
+      - name: Locate and verify the MySQL driver
+        run: |
+          set -euo pipefail
+          library=$(find upstream -type f -name 'libadbc_driver_mysql.so' -print -quit)
+          test -n "$library"
+          test "$(find upstream -type f -name 'libadbc_driver_mysql.so' | wc -l)" -eq 1
+          file -b "$library" | grep -Eq '^ELF 64-bit.*x86-64.*shared object'
+          ldd "$library" | tee dependencies.txt
+          ! grep -q 'not found' dependencies.txt
+          nm -D --defined-only "$library" | awk '{print $3}' | grep -Fx 'AdbcDriverMySQLInit'
+          mkdir -p package/lib
+          install -m 0755 "$library" package/lib/libadbc_driver_mysql.so
+
+      - name: Create deterministic catalog archive
+        run: |
+          set -euo pipefail
+          library_sha=$(sha256sum package/lib/libadbc_driver_mysql.so | cut -d ' ' -f1)
+          printf '%s\n' '{"name":"mysql","version":"0.6.1","os":"linux","arch":"amd64","library":"lib/libadbc_driver_mysql.so","entrypoint":"AdbcDriverMySQLInit","library_sha256":"'"$library_sha"'","archive_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}' > package/manifest.json
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner --format=ustar -C package -cf - manifest.json lib | gzip -n > "$ARCHIVE"
+          sha256sum "$ARCHIVE" | tee "$ARCHIVE.sha256"
+
+      - name: Verify catalog archive
+        run: |
+          set -euo pipefail
+          test "$(tar -tzf "$ARCHIVE" | sort)" = $'lib/\nlib/libadbc_driver_mysql.so\nmanifest.json'
+          tar -xOzf "$ARCHIVE" manifest.json | jq -e '
+            .name == "mysql" and
+            .version == "0.6.1" and
+            .os == "linux" and
+            .arch == "amd64" and
+            .library == "lib/libadbc_driver_mysql.so" and
+            .entrypoint == "AdbcDriverMySQLInit" and
+            (.library_sha256 | test("^[0-9a-f]{64}$")) and
+            (.archive_sha256 | test("^0{64}$"))
+          '
+          mkdir verify
+          tar -xzf "$ARCHIVE" -C verify
+          expected=$(jq -r .library_sha256 verify/manifest.json)
+          actual=$(sha256sum verify/lib/libadbc_driver_mysql.so | cut -d ' ' -f1)
+          test "$actual" = "$expected"
+          nm -D --defined-only verify/lib/libadbc_driver_mysql.so | awk '{print $3}' | grep -Fx 'AdbcDriverMySQLInit'
+
+      - name: Publish immutable release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "${{ inputs.release_tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "${{ inputs.release_tag }}" --repo "$GITHUB_REPOSITORY" --title "Foundry MySQL driver v$VERSION" --notes "Curated Foundry MySQL ADBC v$VERSION Linux amd64 release."
+          gh release upload "${{ inputs.release_tag }}" "$ARCHIVE" "$ARCHIVE.sha256" --repo "$GITHUB_REPOSITORY" --clobber
