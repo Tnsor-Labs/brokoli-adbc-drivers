@@ -20,6 +20,11 @@ jobs:
             (.drivers | type == "array") and
             all(.drivers[]; (
               (.name | test("^[a-z0-9][a-z0-9._-]{0,127}$")) and
+		      (.display_name | type == "string" and length > 0) and
+		      (.description | type == "string" and length > 0) and
+		      (.icon | type == "string" and test("^[a-z0-9_-]+$")) and
+		      (.license | type == "string" and length > 0) and
+		      (.homepage | test("^https://")) and
               (.version | type == "string" and length > 0) and
               (.os | type == "string" and length > 0) and
               (.arch | type == "string" and length > 0) and

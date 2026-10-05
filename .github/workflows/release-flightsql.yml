@@ -1,0 +1,65 @@
+name: Release Flight SQL driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Apache Arrow ADBC version, for example 1.12.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os: linux
+            arch: amd64
+            extension: so
+          - runner: macos-14
+            os: darwin
+            arch: arm64
+            extension: dylib
+          - runner: macos-13
+            os: darwin
+            arch: amd64
+            extension: dylib
+          - runner: windows-latest
+            os: windows
+            arch: amd64
+            extension: dll
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out upstream driver source
+        run: git clone --depth 1 --branch go/adbc/v${{ inputs.version }} https://github.com/apache/arrow-adbc.git upstream
+      - name: Build the shared library
+        working-directory: upstream/go/adbc/driver/flightsql
+        run: go build -buildmode=c-shared -o "libadbc_driver_flightsql.${{ matrix.extension }}" .
+      - name: Package driver
+        working-directory: upstream/go/adbc/driver/flightsql
+        run: |
+          library="libadbc_driver_flightsql.${{ matrix.extension }}"
+          library_sha=$(sha256sum "$library" | cut -d ' ' -f1)
+          mkdir -p package/lib
+          mv "$library" package/lib/
+          cat > package/manifest.json <<EOF
+          {"name":"flightsql","version":"${{ inputs.version }}","os":"${{ matrix.os }}","arch":"${{ matrix.arch }}","library":"lib/$library","entrypoint":"AdbcDriverFlightSQLInit","library_sha256":"$library_sha","archive_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}
+          EOF
+          tar -C package -czf "flightsql-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" manifest.json lib
+      - name: Publish immutable release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: upstream/go/adbc/driver/flightsql
+        run: |
+          tag="flightsql-v${{ inputs.version }}"
+          archive="flightsql-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "Flight SQL driver ${{ inputs.version }}" --notes "Curated Apache Arrow ADBC Flight SQL release." 2>/dev/null || true
+          gh release upload "$tag" "$archive" --repo "$GITHUB_REPOSITORY" --clobber
