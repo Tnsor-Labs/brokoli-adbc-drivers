@@ -1,0 +1,53 @@
+name: Release SQLite driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Apache Arrow ADBC version, for example 1.12.0
+        required: true
+        type: string
+      release_tag:
+        description: GitHub Release tag for this artifact
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SQLite build dependency
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - name: Check out upstream driver source
+        run: git clone --depth 1 --branch go/adbc/v${{ inputs.version }} https://github.com/apache/arrow-adbc.git upstream
+      - name: Build SQLite shared library
+        run: |
+          cmake -S upstream/c -B build \
+            -DADBC_DRIVER_SQLITE=ON \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DADBC_BUILD_TESTS=OFF \
+            -DADBC_WITH_VENDORED_FMT=ON \
+            -DADBC_WITH_VENDORED_NANOARROW=ON
+          cmake --build build --config Release
+          cmake --install build --config Release --prefix stage
+      - name: Package verified release asset
+        run: |
+          library=$(readlink -f stage/lib/libadbc_driver_sqlite.so)
+          library_sha=$(sha256sum "$library" | cut -d ' ' -f1)
+          mkdir -p package/lib
+          cp "$library" package/lib/libadbc_driver_sqlite.so
+          printf '{"name":"sqlite","version":"%s","os":"linux","arch":"amd64","library":"lib/libadbc_driver_sqlite.so","entrypoint":"AdbcDriverSqliteInit","library_sha256":"%s","archive_sha256":"%064d"}\n' "${{ inputs.version }}" "$library_sha" 0 > package/manifest.json
+          tar -C package -czf "sqlite-${{ inputs.version }}-linux-amd64.tar.gz" manifest.json lib
+          sha256sum "sqlite-${{ inputs.version }}-linux-amd64.tar.gz"
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ inputs.release_tag }}"
+          archive="sqlite-${{ inputs.version }}-linux-amd64.tar.gz"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "SQLite driver ${{ inputs.version }}" --notes "Curated Apache Arrow ADBC SQLite release." 2>/dev/null || true
+          gh release upload "$tag" "$archive" --repo "$GITHUB_REPOSITORY" --clobber
