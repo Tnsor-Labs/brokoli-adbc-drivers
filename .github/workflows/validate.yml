@@ -1,0 +1,29 @@
+name: Validate catalog
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate index shape
+        run: |
+          jq -e '
+            .version == 1 and
+            (.drivers | type == "array") and
+            all(.drivers[]; (
+              (.name | test("^[a-z0-9][a-z0-9._-]{0,127}$")) and
+              (.version | type == "string" and length > 0) and
+              (.os | type == "string" and length > 0) and
+              (.arch | type == "string" and length > 0) and
+              (.archive_url | test("^https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/")) and
+              (.sha256 | test("^[0-9a-fA-F]{64}$"))
+            ))
+          ' index.json
