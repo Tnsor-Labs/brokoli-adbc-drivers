@@ -44,24 +44,37 @@ jobs:
     steps:
       - name: Check out upstream driver source
         run: git clone --depth 1 --branch go/adbc/v${{ inputs.version }} https://github.com/apache/arrow-adbc.git upstream
-      - name: Build the shared library
-        working-directory: upstream/go/adbc/driver/flightsql
-        run: go build -buildmode=c-shared -o "libadbc_driver_flightsql.${{ matrix.extension }}" .
-      - name: Package driver
-        working-directory: upstream/go/adbc/driver/flightsql
+      - name: Build the shared library with Apache's CMake wrapper
         run: |
-          library="libadbc_driver_flightsql.${{ matrix.extension }}"
+          cmake -S upstream/c -B build \
+            -DADBC_DRIVER_FLIGHTSQL=ON \
+            -DADBC_BUILD_SHARED=ON \
+            -DADBC_BUILD_STATIC=OFF \
+            -DADBC_BUILD_TESTS=OFF \
+            -DADBC_WITH_VENDORED_FMT=ON \
+            -DADBC_WITH_VENDORED_NANOARROW=ON
+          cmake --build build --config Release
+          cmake --install build --config Release --prefix stage
+      - name: Package driver
+        run: |
+          shopt -s nullglob
+          candidates=(stage/lib/libadbc_driver_flightsql*.${{ matrix.extension }}* stage/bin/libadbc_driver_flightsql*.${{ matrix.extension }}* stage/bin/adbc_driver_flightsql*.${{ matrix.extension }}*)
+          library=""
+          for candidate in "${candidates[@]}"; do
+            if [[ -f "$candidate" ]]; then library="$candidate"; break; fi
+          done
+          test -n "$library"
           library_sha=$(sha256sum "$library" | cut -d ' ' -f1)
           mkdir -p package/lib
-          mv "$library" package/lib/
+          library_name="libadbc_driver_flightsql.${{ matrix.extension }}"
+          cp "$library" "package/lib/$library_name"
           cat > package/manifest.json <<EOF
-          {"name":"flightsql","version":"${{ inputs.version }}","os":"${{ matrix.os }}","arch":"${{ matrix.arch }}","library":"lib/$library","entrypoint":"AdbcDriverFlightSQLInit","library_sha256":"$library_sha","archive_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}
+          {"name":"flightsql","version":"${{ inputs.version }}","os":"${{ matrix.os }}","arch":"${{ matrix.arch }}","library":"lib/$library_name","entrypoint":"AdbcDriverFlightSQLInit","library_sha256":"$library_sha","archive_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}
           EOF
           tar -C package -czf "flightsql-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" manifest.json lib
       - name: Publish immutable release asset
         env:
           GH_TOKEN: ${{ github.token }}
-        working-directory: upstream/go/adbc/driver/flightsql
         run: |
           tag="${{ inputs.release_tag }}"
           archive="flightsql-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
