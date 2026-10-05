@@ -39,7 +39,7 @@ jobs:
           library=$(find upstream -type f -name 'libadbc_driver_mysql.so' -print -quit)
           test -n "$library"
           test "$(find upstream -type f -name 'libadbc_driver_mysql.so' | wc -l)" -eq 1
-          file -b "$library" | grep -Eq '^ELF 64-bit.*x86-64.*shared object'
+          file -b "$library" | grep -Eq '^ELF 64-bit.*shared object.*x86-64'
           ldd "$library" | tee dependencies.txt
           ! grep -q 'not found' dependencies.txt
           nm -D --defined-only "$library" | awk '{print $3}' | grep -Fx 'AdbcDriverMySQLInit'
