@@ -2,6 +2,22 @@
   "version": 1,
   "drivers": [
     {
+      "name": "postgresql",
+      "display_name": "Apache PostgreSQL",
+      "description": "Native Apache Arrow ADBC driver for PostgreSQL sources.",
+      "icon": "database",
+      "license": "Apache-2.0",
+      "homepage": "https://arrow.apache.org/adbc/",
+      "lifecycle": "supported",
+      "adbc_version": "1.12.0",
+      "advisories": [],
+      "version": "1.12.0",
+      "os": "linux",
+      "arch": "amd64",
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/postgresql-v1.12.0/postgresql-1.12.0-linux-amd64.tar.gz",
+      "sha256": "969eb796a25d7ade9135ee968e9e787442e4a2aa9442941900f3be3835373a7c"
+    },
+    {
       "name": "flightsql",
       "display_name": "Apache Flight SQL",
       "description": "Columnar SQL over Apache Arrow Flight RPC.",
