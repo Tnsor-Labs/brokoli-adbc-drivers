@@ -7,6 +7,10 @@ on:
         description: Apache Arrow ADBC version, for example 1.12.0
         required: true
         type: string
+      release_tag:
+        description: Immutable GitHub Release tag for these artifacts
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -59,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: upstream/go/adbc/driver/flightsql
         run: |
-          tag="flightsql-v${{ inputs.version }}"
+          tag="${{ inputs.release_tag }}"
           archive="flightsql-${{ inputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "Flight SQL driver ${{ inputs.version }}" --notes "Curated Apache Arrow ADBC Flight SQL release." 2>/dev/null || true
           gh release upload "$tag" "$archive" --repo "$GITHUB_REPOSITORY" --clobber
