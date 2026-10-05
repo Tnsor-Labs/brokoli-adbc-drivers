@@ -2,6 +2,23 @@
   "version": 1,
   "drivers": [
     {
+      "name": "sqlite",
+      "display_name": "SQLite",
+      "description": "Native Apache Arrow ADBC driver for SQLite databases.",
+      "icon": "database",
+      "icon_url": "https://sqlite.org/images/sqlite370_banner.gif",
+      "license": "Apache-2.0",
+      "homepage": "https://arrow.apache.org/adbc/",
+      "lifecycle": "supported",
+      "adbc_version": "1.12.0",
+      "advisories": [],
+      "version": "1.12.0",
+      "os": "linux",
+      "arch": "amd64",
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/sqlite-v1.12.0/sqlite-1.12.0-linux-amd64.tar.gz",
+      "sha256": "b5c85226662a3cd04413ab8d012e1de7d480856e706e17a7b541ed3e941679d8"
+    },
+    {
       "name": "postgresql",
       "display_name": "Apache PostgreSQL",
       "description": "Native Apache Arrow ADBC driver for PostgreSQL sources.",
