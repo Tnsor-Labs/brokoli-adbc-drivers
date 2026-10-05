@@ -23,6 +23,7 @@ jobs:
               (.display_name | type == "string" and length > 0) and
               (.description | type == "string" and length > 0) and
               (.icon | type == "string" and test("^[a-z0-9_-]+$")) and
+              (.icon_url == null or (.icon_url | type == "string" and test("^https://"))) and
               (.license | type == "string" and length > 0) and
               (.homepage | test("^https://")) and
               (.version | type == "string" and length > 0) and
