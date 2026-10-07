@@ -33,3 +33,20 @@ jobs:
               (.sha256 | test("^[0-9a-fA-F]{64}$"))
             ))
           ' index.json
+
+  # The shape check above accepts an entry whose archive does not install
+  # or whose driver does not load. This job installs every Linux entry with
+  # Brokoli's own installer (digests, manifest-matches-entry, version rules)
+  # and loads it through the ADBC driver manager, in an environment shaped
+  # like Brokoli's native worker image, and requires each driver to depend
+  # only on the base C/C++ runtime. It would have refused the PostgreSQL
+  # build that needed the system's libpq, and the SQLite build that needed
+  # its libsqlite3.
+  load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the load check
+        run: docker build -t catalog-loadcheck tools/loadcheck
+      - name: Install and load every driver
+        run: docker run --rm -v "$PWD/index.json:/catalog/index.json:ro" catalog-loadcheck
