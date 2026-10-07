@@ -70,8 +70,8 @@
       "version": "1.12.0",
       "os": "linux",
       "arch": "amd64",
-      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/sqlite-v1.12.0/sqlite-1.12.0-linux-amd64.tar.gz",
-      "sha256": "b5c85226662a3cd04413ab8d012e1de7d480856e706e17a7b541ed3e941679d8"
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/sqlite-v1.12.0-pypi/sqlite-1.12.0-linux-amd64.tar.gz",
+      "sha256": "22459220c6c3c977947171a5c3fd54a271a7a27db88827540dabfbcf03ffb60d"
     },
     {
       "name": "postgresql",
@@ -87,8 +87,8 @@
       "version": "1.12.0",
       "os": "linux",
       "arch": "amd64",
-      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/postgresql-v1.12.0/postgresql-1.12.0-linux-amd64.tar.gz",
-      "sha256": "969eb796a25d7ade9135ee968e9e787442e4a2aa9442941900f3be3835373a7c"
+      "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/postgresql-v1.12.0-pypi/postgresql-1.12.0-linux-amd64.tar.gz",
+      "sha256": "1d130f2685f1686624de22e3e57d6bf2771379bad2b030c1dccf69667b19189e"
     },
     {
       "name": "flightsql",
