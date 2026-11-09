@@ -1,0 +1,83 @@
+name: Release Orkidea driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Immutable GitHub Release tag for this catalog asset
+        required: true
+        default: orkidea-v0.1.0
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: 0.1.0
+      UPSTREAM_ARCHIVE: orkidea-adbc-0.1.0-linux_amd64.tar.gz
+      UPSTREAM_SHA256: 680e19a18b67281d89928e20f2f7222dc5facb03f0b34169ff88918ab6b5ffc2
+      LIBRARY_NAME: libadbc_driver_orkidea.so
+      ENTRYPOINT: OrkideaDriverInit
+    steps:
+      - name: Download and verify the Orkidea release
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "$UPSTREAM_ARCHIVE" \
+            "https://github.com/Tnsor-Labs/orkidea-adbc/releases/download/v${VERSION}/${UPSTREAM_ARCHIVE}"
+          printf '%s  %s\n' "$UPSTREAM_SHA256" "$UPSTREAM_ARCHIVE" | sha256sum --check --strict
+
+      - name: Verify the Linux amd64 driver library and entrypoint
+        run: |
+          set -euo pipefail
+          mkdir upstream
+          tar --extract --file "$UPSTREAM_ARCHIVE" --gzip --no-same-owner --no-same-permissions --directory upstream
+          library=$(find upstream -type f -name "$LIBRARY_NAME" -print -quit)
+          test -n "$library"
+          test "$(find upstream -type f -name "$LIBRARY_NAME" | wc -l)" -eq 1
+          readelf --file-header "$library" | grep --fixed-strings 'Class:                             ELF64'
+          readelf --file-header "$library" | grep --fixed-strings 'Machine:                           Advanced Micro Devices X86-64'
+          nm --dynamic --defined-only "$library" | awk '{print $3}' | grep --fixed-strings --line-regexp "$ENTRYPOINT"
+          mkdir -p package/lib
+          install --mode=0644 "$library" "package/lib/$LIBRARY_NAME"
+
+      - name: Create deterministic catalog archive and manifest
+        run: |
+          set -euo pipefail
+          library_sha256=$(sha256sum "package/lib/$LIBRARY_NAME" | cut --delimiter=' ' --fields=1)
+          printf '%s\n' \
+            "{\"name\":\"orkidea\",\"version\":\"$VERSION\",\"os\":\"linux\",\"arch\":\"amd64\",\"library\":\"lib/$LIBRARY_NAME\",\"entrypoint\":\"$ENTRYPOINT\",\"library_sha256\":\"$library_sha256\",\"archive_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\"}" \
+            > package/manifest.json
+          archive="orkidea-${VERSION}-linux-amd64.tar.gz"
+          tar --create --format=posix --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+            --directory package --file - manifest.json lib | gzip --no-name > "$archive"
+          sha256sum "$archive"
+
+      - name: Verify catalog archive contents
+        run: |
+          set -euo pipefail
+          archive="orkidea-${VERSION}-linux-amd64.tar.gz"
+          tar --list --file "$archive" --gzip | diff --unified --label expected --label actual - <(printf '%s\n' manifest.json lib/ "lib/$LIBRARY_NAME")
+          tar --extract --file "$archive" --gzip --to-stdout manifest.json | jq -e \
+            --arg version "$VERSION" \
+            --arg library "lib/$LIBRARY_NAME" \
+            --arg entrypoint "$ENTRYPOINT" \
+            '.name == "orkidea" and .version == $version and .os == "linux" and .arch == "amd64" and .library == $library and .entrypoint == $entrypoint and (.library_sha256 | test("^[0-9a-f]{64}$")) and (.archive_sha256 == ("0" * 64))'
+
+      - name: Publish immutable release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="orkidea-${VERSION}-linux-amd64.tar.gz"
+          if ! gh release view "${{ inputs.release_tag }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "${{ inputs.release_tag }}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Orkidea driver $VERSION" \
+              --notes "Orkidea ADBC driver $VERSION for Oracle Database, Linux amd64, repackaged from the Tnsor-Labs/orkidea-adbc v$VERSION release. Experimental."
+          fi
+          gh release upload "${{ inputs.release_tag }}" "$archive" --repo "$GITHUB_REPOSITORY"
