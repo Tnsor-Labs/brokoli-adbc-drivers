@@ -107,6 +107,7 @@
       "arch": "amd64",
       "archive_url": "https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/flightsql-v1.12.0/flightsql-1.12.0-linux-amd64.tar.gz",
       "sha256": "f0ee27d39fb6f9ba60da5d4083baae0adfd97f7b7ef7046895800155be447660"
-    }
+    },
+    {"name":"orkidea","display_name":"Oracle (Orkidea)","description":"Orkidea ADBC driver for Oracle Database. No Oracle Instant Client needed. Experimental.","icon":"database","license":"Apache-2.0","homepage":"https://github.com/Tnsor-Labs/orkidea-adbc","lifecycle":"experimental","adbc_version":"0.1.0","advisories":[],"version":"0.1.0","os":"linux","arch":"amd64","archive_url":"https://github.com/Tnsor-Labs/brokoli-adbc-drivers/releases/download/orkidea-v0.1.0/orkidea-0.1.0-linux-amd64.tar.gz","sha256":"ad421df5c44134517b7e7434de8a8e8d96cd5d29e27c231080d6b9bacd0d60bd"}
   ]
 }
